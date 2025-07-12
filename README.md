@@ -293,9 +293,9 @@ python -m app.main
 ```
 
 The server will be available at:
-- API: `http://localhost:8000`
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
+- API: `http://localhost:5000`
+- Swagger UI: `http://localhost:5000/docs`
+- ReDoc: `http://localhost:5000/redoc`
 
 #### Features Maintained
 
