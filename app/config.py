@@ -11,7 +11,7 @@ class Config:
     
     # ===== API Configuration =====
     API_HOST: str = os.getenv("API_HOST", "localhost")
-    API_PORT: int = int(os.getenv("API_PORT", "8000"))
+    API_PORT: int = int(os.getenv("API_PORT", "5000"))
     DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
     
     # ===== vLLM DeepSeek Configuration =====
@@ -29,6 +29,9 @@ class Config:
         "GOOGLE_TOKEN_FILE", 
         "token.pickle"
     )
+    
+    # Keys directory for multi-user tokens (fallback for Google credentials)
+    KEYS_DIRECTORY: str = os.getenv("KEYS_DIRECTORY", "Keys")
     
     # Legacy support (backwards compatibility)
     GOOGLE_CALENDAR_CREDENTIALS_FILE: str = os.getenv(
@@ -94,16 +97,25 @@ class Config:
         required_configs = {
             "VLLM_BASE_URL": cls.VLLM_BASE_URL,
             "VLLM_MODEL_PATH": cls.VLLM_MODEL_PATH,
-            "GOOGLE_CREDENTIALS_FILE": cls.GOOGLE_CREDENTIALS_FILE,
         }
         
         for config_name, config_value in required_configs.items():
             if not config_value:
                 missing_configs.append(config_name)
         
-        # Check if credentials file exists
-        if cls.GOOGLE_CREDENTIALS_FILE and not Path(cls.GOOGLE_CREDENTIALS_FILE).exists():
-            missing_configs.append(f"GOOGLE_CREDENTIALS_FILE (file not found: {cls.GOOGLE_CREDENTIALS_FILE})")
+        # Check Google credentials - either main credentials file or Keys directory with tokens
+        has_main_credentials = cls.GOOGLE_CREDENTIALS_FILE and Path(cls.GOOGLE_CREDENTIALS_FILE).exists()
+        has_keys_directory = Path(cls.KEYS_DIRECTORY).exists()
+        
+        if has_keys_directory:
+            # Check if there are any .amd.token files in Keys directory
+            keys_path = Path(cls.KEYS_DIRECTORY)
+            token_files = list(keys_path.glob("*.amd.token"))
+            if not token_files:
+                has_keys_directory = False
+        
+        if not has_main_credentials and not has_keys_directory:
+            missing_configs.append(f"Google credentials: either GOOGLE_CREDENTIALS_FILE ({cls.GOOGLE_CREDENTIALS_FILE}) or Keys directory with .amd.token files")
         
         return missing_configs
     
@@ -119,6 +131,7 @@ class Config:
             "vllm_temperature": cls.VLLM_TEMPERATURE,
             "credentials_file": cls.GOOGLE_CREDENTIALS_FILE,
             "token_file": cls.GOOGLE_TOKEN_FILE,
+            "keys_directory": cls.KEYS_DIRECTORY,
             "default_timezone": cls.DEFAULT_TIMEZONE,
             "feature_flags": {
                 "email_sending": cls.ENABLE_EMAIL_SENDING,
