@@ -68,6 +68,7 @@ async def root():
         "version": "1.0.0",
         "endpoints": {
             "schedule": "/schedule - POST endpoint for processing scheduling requests",
+            "receive": "/receive - POST endpoint for receiving scheduling requests (alias for /schedule)",
             "health": "/health - GET endpoint for health check"
         }
     }
@@ -96,6 +97,17 @@ async def process_scheduling_request(request: SchedulingRequest):
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing scheduling request: {str(e)}")
+
+@app.post("/receive", response_model=SchedulingResponse)
+async def receive_scheduling_request(request: SchedulingRequest):
+    """
+    Receive endpoint - alias for the schedule endpoint to match external API calls.
+    
+    This endpoint takes a scheduling request and processes it to generate a response
+    that includes events for each attendee.
+    """
+    # Use the same logic as the schedule endpoint
+    return await process_scheduling_request(request)
 
 def process_scheduling_logic(request: SchedulingRequest) -> ProcessedSchedulingRequest:
     """
@@ -127,6 +139,9 @@ def generate_scheduling_response(processed_request: ProcessedSchedulingRequest) 
     attendee_emails = [attendee.email for attendee in processed_request.Attendees]
     all_attendees = [processed_request.From] + attendee_emails
     
+    # Determine meeting subject/summary
+    meeting_summary = processed_request.Subject or "Project Discussion Meeting"
+    
     # Create mock events for each attendee
     attendees_with_events = []
     
@@ -139,7 +154,7 @@ def generate_scheduling_response(processed_request: ProcessedSchedulingRequest) 
             EndTime="2025-07-17T11:00:00+05:30",
             NumAttendees=len(all_attendees),
             Attendees=all_attendees,
-            Summary=processed_request.Subject
+            Summary=meeting_summary
         )
         events.append(main_event)
         
@@ -194,4 +209,4 @@ def generate_scheduling_response(processed_request: ProcessedSchedulingRequest) 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=5000)
