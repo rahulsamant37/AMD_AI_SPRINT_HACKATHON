@@ -72,6 +72,11 @@ class AuthenticationManager:
         self._authenticated_users: Dict[str, UserAuthInfo] = {}
         self._load_authenticated_users()
         
+        # Load tokens from Keys directory if they exist
+        loaded_count = self.load_tokens_from_keys_directory()
+        if loaded_count > 0:
+            logger.info(f"Loaded {loaded_count} additional tokens from Keys directory")
+        
         logger.info(f"AuthenticationManager initialized with {len(self._authenticated_users)} users")
     
     def _load_authenticated_users(self) -> None:
@@ -369,6 +374,68 @@ class AuthenticationManager:
         except Exception as e:
             logger.error(f"Failed to migrate legacy token: {e}")
             return False
+    
+    def load_tokens_from_keys_directory(self, keys_dir: str = None) -> int:
+        """Load existing tokens from Keys directory and add them to authenticated users"""
+        if keys_dir is None:
+            keys_dir = config.KEYS_DIRECTORY
+            
+        if not os.path.exists(keys_dir):
+            logger.info(f"Keys directory not found: {keys_dir}")
+            return 0
+        
+        loaded_count = 0
+        
+        try:
+            # Look for .amd.token files in Keys directory
+            for filename in os.listdir(keys_dir):
+                if filename.endswith('.amd.token'):
+                    token_file_path = os.path.join(keys_dir, filename)
+                    logger.info(f"Found token file: {token_file_path}")
+                    
+                    try:
+                        # Load the token file (JSON format)
+                        with open(token_file_path, 'r') as f:
+                            token_data = json.load(f)
+                        
+                        # Create credentials object from token data
+                        credentials = Credentials(
+                            token=token_data.get('token'),
+                            refresh_token=token_data.get('refresh_token'),
+                            token_uri=token_data.get('token_uri'),
+                            client_id=token_data.get('client_id'),
+                            client_secret=token_data.get('client_secret'),
+                            scopes=token_data.get('scopes', [])
+                        )
+                        
+                        # Validate and get user email
+                        if self._validate_credentials(credentials):
+                            email = self._get_user_email_from_credentials(credentials)
+                            if email:
+                                # Check if user is already authenticated
+                                if email not in self._authenticated_users:
+                                    success = self.add_existing_credentials(email, credentials)
+                                    if success:
+                                        loaded_count += 1
+                                        logger.info(f"Successfully loaded credentials for: {email} from {filename}")
+                                    else:
+                                        logger.error(f"Failed to add credentials for: {email}")
+                                else:
+                                    logger.info(f"User {email} already authenticated, skipping")
+                            else:
+                                logger.error(f"Failed to get email from credentials in {filename}")
+                        else:
+                            logger.warning(f"Invalid credentials in {filename}")
+                            
+                    except Exception as e:
+                        logger.error(f"Failed to process token file {filename}: {e}")
+            
+            logger.info(f"Loaded {loaded_count} tokens from Keys directory")
+            return loaded_count
+            
+        except Exception as e:
+            logger.error(f"Failed to load tokens from Keys directory: {e}")
+            return 0
 
 
 # Singleton instance
@@ -382,4 +449,4 @@ def get_auth_manager() -> AuthenticationManager:
         _auth_manager = AuthenticationManager()
         # Migrate legacy token on first initialization
         _auth_manager.migrate_legacy_token()
-    return _auth_manager 
+    return _auth_manager
