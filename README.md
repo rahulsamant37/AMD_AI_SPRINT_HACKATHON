@@ -174,6 +174,149 @@ The Notebook demonstrates how to create a simple AI Agent that uses vLLM & OpenA
 
 ----------------
 
+### FastAPI Application Schema
+
+This project provides a complete FastAPI web application that implements the AI Scheduling Assistant with the exact schema matching the JSON samples. The API provides endpoints that support the full workflow from input processing to final output generation.
+
+#### API Endpoints
+
+The FastAPI application exposes the following main endpoints:
+
+- **POST `/api/meetings/schedule`** - Main endpoint for scheduling meetings (new JSON schema)
+- **POST `/api/meetings/schedule-legacy`** - Legacy endpoint for backward compatibility
+- **GET `/api/health`** - Health check endpoint
+- **GET `/api/calendar/availability`** - Calendar availability endpoint
+
+#### Schema Objects
+
+The API defines the following Pydantic models that exactly match the JSON sample formats:
+
+##### 1. Input Request Schema (`ScheduleMeetingRequest`)
+Matches `1_Input_Request.json` format:
+```python
+{
+    "Request_id": "string (UUID)",
+    "Datetime": "string (DD-MM-YYYYTHH:MM:SS format)",
+    "Location": "string (optional)",
+    "From": "string (email)",
+    "Attendees": [{"email": "string"}],
+    "Subject": "string",
+    "EmailContent": "string"
+}
+```
+
+##### 2. Processed Input Schema (`ProcessedMeetingInput`)
+Matches `2_Processed_Input.json` format:
+```python
+{
+    "Request_id": "string (UUID)",
+    "Datetime": "string (DD-MM-YYYYTHH:MM:SS)",
+    "Location": "string (optional)",
+    "From": "string (email)",
+    "Attendees": [{"email": "string"}],
+    "Subject": "string", 
+    "EmailContent": "string",
+    "Start": "string (YYYY-MM-DDTHH:MM:SS+05:30)",
+    "End": "string (YYYY-MM-DDTHH:MM:SS+05:30)",
+    "Duration_mins": "string"
+}
+```
+
+##### 3. Output Event Schema (`MeetingOutputEvent`)
+Matches `3_Output_Event.json` format:
+```python
+{
+    "Request_id": "string (UUID)",
+    "Datetime": "string (DD-MM-YYYYTHH:MM:SS)",
+    "Location": "string (optional)",
+    "From": "string (email)",
+    "Attendees": [
+        {
+            "email": "string",
+            "events": [
+                {
+                    "StartTime": "string (YYYY-MM-DDTHH:MM:SS+05:30)",
+                    "EndTime": "string (YYYY-MM-DDTHH:MM:SS+05:30)",
+                    "NumAttendees": "integer",
+                    "Attendees": ["string"],
+                    "Summary": "string"
+                }
+            ]
+        }
+    ],
+    "Subject": "string",
+    "EmailContent": "string",
+    "EventStart": "string (YYYY-MM-DDTHH:MM:SS+05:30)",
+    "EventEnd": "string (YYYY-MM-DDTHH:MM:SS+05:30)",
+    "Duration_mins": "string",
+    "MetaData": {
+        "processing_timestamp": "string",
+        "communication_details": {
+            "request_source": "string",
+            "processing_method": "string",
+            "model_used": "string",
+            "calendar_integration": "string",
+            "scheduling_confidence": "number",
+            "conflicts_detected": "integer"
+        },
+        "workflow_stages": {
+            "input_received": "boolean",
+            "input_processed": "boolean",
+            "calendar_checked": "boolean",
+            "slots_generated": "boolean",
+            "output_created": "boolean"
+        }
+    }
+}
+```
+
+#### API Response Format
+
+The API returns a comprehensive response that includes:
+```python
+{
+    "success": "boolean",
+    "proposal_id": "string (optional)",
+    "suggested_slots": "array (optional)",
+    "reasoning": "string (optional)",
+    "agent_message": "string (optional)",
+    "processed_input": "ProcessedMeetingInput object",
+    "output_event": "MeetingOutputEvent object"
+}
+```
+
+#### Running the FastAPI Application
+
+To start the FastAPI server:
+```bash
+python -m app.main
+```
+
+The server will be available at:
+- API: `http://localhost:8000`
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
+
+#### Features Maintained
+
+All functionality from the original README has been preserved:
+- ✅ Autonomous Coordination: AI initiates scheduling without human micromanagement
+- ✅ Dynamic Adaptability: Handles last-minute changes and conflicting priorities
+- ✅ Natural Language Interaction: Processes natural language requests from EmailContent
+- ✅ Calendar Integration: Syncs with Google Calendar (when configured)
+- ✅ vLLM Integration: Uses DeepSeek AI models for intelligent processing
+- ✅ Backward Compatibility: Supports legacy API format alongside new schema
+
+#### Schema Validation
+
+The API includes comprehensive validation:
+- Date format validation for `Datetime` field (DD-MM-YYYYTHH:MM:SS)
+- ISO datetime with timezone validation for processed times (+05:30)
+- Email format validation for attendee emails
+- Required field validation for all mandatory fields
+
+----------------
+
 ### Inputs & Outputs : 
 #### Input JSON : 
 
