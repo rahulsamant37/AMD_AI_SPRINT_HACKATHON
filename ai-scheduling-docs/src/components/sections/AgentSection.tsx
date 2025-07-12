@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CodeBlock } from "../CodeBlock";
-import { Bot, ExternalLink, Brain, MessageSquare, Code, Info } from "lucide-react";
+import { Bot, ExternalLink, Brain, MessageSquare, Code, Info, Workflow } from "lucide-react";
 
 export const AgentSection = () => {
   const agentCode = `import json
@@ -27,19 +27,9 @@ class AI_AGENT:
                 "content": f"""
                 You are an Agent that helps in scheduling meetings.
                 Your job is to extract Email ID's and Meeting Duration.
-                You should return:
-                1. List of email id's of participants (comma-separated).
-                2. Meeting duration in minutes.
-                3. Time constraints (e.g., 'next week').
-                
-                If the List of email id's of participants are just names, 
-                then append @amd.com at the end and return. 
-                
                 Return as json with 'participants', 'time_constraints' & 'meeting_duration'.
                 Strictly follow the instructions. Strictly return dict with 
-                participants email id's, time constraints & meeting duration in minutes only. 
-                Do not add any other instructions or information. 
-                
+                participants email id's, time constraints & meeting duration in minutes only.
                 Email: {email_text}
                 """
             }]
@@ -66,28 +56,16 @@ print(json.dumps(result, indent=2))`;
 
   const setupSteps = `# Step 1: We started our vLLM Server with this command
 HIP_VISIBLE_DEVICES=0 vllm serve /home/user/Models/deepseek-ai/deepseek-llm-7b-chat \\
-    --gpu-memory-utilization 0.9 \\
-    --swap-space 16 \\
-    --disable-log-requests \\
-    --dtype float16 \\
-    --max-model-len 2048 \\
-    --tensor-parallel-size 1 \\
-    --host 0.0.0.0 \\
-    --port 3000 \\
-    --num-scheduler-steps 10 \\
-    --max-num-seqs 128 \\
-    --max-num-batched-tokens 2048 \\
-    --max-model-len 2048 \\
-    --distributed-executor-backend "mp"`;
+    --port 3000 ...`;
 
   return (
     <div className="space-y-8">
       <div>
         <h2 className="text-3xl font-bold mb-4 bg-gradient-primary bg-clip-text text-transparent">
-          How We Built Our AI Agent
+          How We Built Our AI Agent with LangGraph
         </h2>
         <p className="text-muted-foreground text-lg">
-          We built an intelligent agent that could parse emails and make scheduling decisions autonomously.
+          We built an intelligent agent that could autonomously parse requests and make scheduling decisions by orchestrating its logic within a robust LangGraph workflow.
         </p>
       </div>
 
@@ -104,14 +82,14 @@ HIP_VISIBLE_DEVICES=0 vllm serve /home/user/Models/deepseek-ai/deepseek-llm-7b-c
         <CardHeader>
           <CardTitle className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-gradient-primary/10">
-              <Bot className="h-5 w-5 text-accent" />
+              <Workflow className="h-5 w-5 text-accent" />
             </div>
             Our AI Agent's Architecture
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground mb-6">
-            Our AI Agent served as an intelligent layer that processed natural language requests and converted them into structured data that our application could use for scheduling.
+            Our AI Agent served as the core intelligent layer of our system. By using **LangGraph**, we structured its operations into a clear, stateful workflow. This allowed it to process natural language, interact with our LLMs, and convert unstructured requests into the structured data needed for scheduling.
           </p>
 
           <div className="grid md:grid-cols-3 gap-6">
@@ -166,9 +144,9 @@ HIP_VISIBLE_DEVICES=0 vllm serve /home/user/Models/deepseek-ai/deepseek-llm-7b-c
                 2
               </div>
               <div>
-                <h4 className="font-semibold text-foreground mb-2">Created the AI Agent Class</h4>
+                <h4 className="font-semibold text-foreground mb-2">Built the LangGraph Workflow</h4>
                 <p className="text-muted-foreground">
-                  We then built an agent in Python that could communicate with the vLLM server to process requests.
+                  We then defined the agent's logic as a stateful graph, orchestrating calls to the LLM for each step of the process.
                 </p>
               </div>
             </div>
@@ -180,7 +158,7 @@ HIP_VISIBLE_DEVICES=0 vllm serve /home/user/Models/deepseek-ai/deepseek-llm-7b-c
               <div>
                 <h4 className="font-semibold text-foreground mb-2">Tested and Iterated</h4>
                 <p className="text-muted-foreground">
-                  We tested our agent with different email formats and refined our prompts to achieve better accuracy.
+                  We tested our agent with different email formats and refined our prompts and workflow logic to achieve better accuracy.
                 </p>
               </div>
             </div>

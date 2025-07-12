@@ -22,7 +22,7 @@ export const VLLMSection = () => {
         --max-model-len 2048 \\
         --distributed-executor-backend "mp"`;
 
-  const llamaCommand = `HIP_VISIBLE_DEVICES=0 vllm serve /home/user/Models/meta-llama/Meta-Llama-3.1-8B-Instruct \\
+  const llama31Command = `HIP_VISIBLE_DEVICES=0 vllm serve /home/user/Models/meta-llama/Meta-Llama-3.1-8B-Instruct \\
         --gpu-memory-utilization 0.3 \\
         --swap-space 16 \\
         --disable-log-requests \\
@@ -31,6 +31,21 @@ export const VLLMSection = () => {
         --tensor-parallel-size 1 \\
         --host 0.0.0.0 \\
         --port 4000 \\
+        --num-scheduler-steps 10 \\
+        --max-num-seqs 128 \\
+        --max-num-batched-tokens 2048 \\
+        --max-model-len 2048 \\
+        --distributed-executor-backend "mp"`;
+
+  const llama32Command = `HIP_VISIBLE_DEVICES=0 vllm serve /home/user/Models/meta-llama/Meta-Llama-3.2-1B-Instruct \\
+        --gpu-memory-utilization 0.3 \\
+        --swap-space 16 \\
+        --disable-log-requests \\
+        --dtype float16 \\
+        --max-model-len 2048 \\
+        --tensor-parallel-size 1 \\
+        --host 0.0.0.0 \\
+        --port 5000 \\
         --num-scheduler-steps 10 \\
         --max-num-seqs 128 \\
         --max-num-batched-tokens 2048 \\
@@ -61,10 +76,10 @@ print(response.choices[0].message.content)`;
     <div className="space-y-8">
       <div>
         <h2 className="text-3xl font-bold mb-4 bg-gradient-primary bg-clip-text text-transparent">
-          How We Set Up Our vLLM Server
+          How We Set Up Our vLLM Servers
         </h2>
         <p className="text-muted-foreground text-lg">
-          We successfully set up a high-performance LLM inference server with vLLM on the AMD MI300X GPU.
+          We successfully set up a high-performance, multi-model inference environment with vLLM, powered by the AMD MI300X GPU.
         </p>
       </div>
 
@@ -75,12 +90,12 @@ print(response.choices[0].message.content)`;
             <div className="p-2 rounded-lg bg-gradient-primary/10">
               <Server className="h-5 w-5 text-accent" />
             </div>
-            Why We Chose vLLM
+            Why We Chose vLLM on AMD MI300X
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground mb-6">
-            We chose vLLM, an open-source library, because it allowed us to achieve high throughput and low latency for our LLM inference. It was designed to optimize text generation by batching requests efficiently and making full use of the powerful GPU resources we had.
+            We chose vLLM because it allowed us to achieve the high throughput and low latency essential for our agent. By deploying it on the AMD MI300X GPU, we could efficiently batch requests and fully utilize the powerful hardware, which was critical for our multi-model strategy.
           </p>
 
           <div className="grid md:grid-cols-3 gap-6">
@@ -110,18 +125,18 @@ print(response.choices[0].message.content)`;
             <div className="p-2 rounded-lg bg-gradient-secondary/10">
               <Cpu className="h-5 w-5 text-ai-blue" />
             </div>
-            The Models We Deployed
+            The Three Models We Deployed
           </CardTitle>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="deepseek" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="deepseek">DeepSeek LLM 7B</TabsTrigger>
-              <TabsTrigger value="llama">Llama 3.1 8B</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="deepseek">DeepSeek 7B</TabsTrigger>
+              <TabsTrigger value="llama31">Llama 3.1 8B</TabsTrigger>
+              <TabsTrigger value="llama32">Llama 3.2 1B</TabsTrigger>
             </TabsList>
-            <br />
             
-            <TabsContent value="deepseek" className="space-y-6">
+            <TabsContent value="deepseek" className="space-y-6 pt-6">
               <div className="flex items-start gap-4">
                 <Badge className="bg-accent/10 text-accent border-accent/20">
                   Port 3000
@@ -144,23 +159,9 @@ print(response.choices[0].message.content)`;
               <CodeBlock language="bash" title="Command to Start Our DeepSeek Server">
                 {deepseekCommand}
               </CodeBlock>
-
-              <div className="pt-4">
-                <Button variant="outline" asChild>
-                  <a 
-                    href="https://github.com/AMD-AI-HACKATHON/AI-Scheduling-Assistant/blob/main/vLLM_Inference_Servering_DeepSeek.ipynb" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    View Our DeepSeek Notebook
-                  </a>
-                </Button>
-              </div>
             </TabsContent>
             
-            <TabsContent value="llama" className="space-y-6">
+            <TabsContent value="llama31" className="space-y-6 pt-6">
               <div className="flex items-start gap-4">
                 <Badge className="bg-ai-blue/10 text-ai-blue border-ai-blue/20">
                   Port 4000
@@ -180,23 +181,34 @@ print(response.choices[0].message.content)`;
                 </AlertDescription>
               </Alert>
 
-              <CodeBlock language="bash" title="Command to Start Our Llama Server">
-                {llamaCommand}
+              <CodeBlock language="bash" title="Command to Start Our Llama 3.1 Server">
+                {llama31Command}
               </CodeBlock>
-
-              <div className="pt-4">
-                <Button variant="outline" asChild>
-                  <a 
-                    href="https://github.com/AMD-AI-HACKATHON/AI-Scheduling-Assistant/blob/main/vLLM_Inference_Servering_LLaMA.ipynb" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    View Our Llama Notebook
-                  </a>
-                </Button>
+            </TabsContent>
+            
+            <TabsContent value="llama32" className="space-y-6 pt-6">
+              <div className="flex items-start gap-4">
+                <Badge className="bg-ai-purple/10 text-ai-purple border-ai-purple/20">
+                  Port 5000
+                </Badge>
+                <div>
+                  <h4 className="font-semibold text-foreground mb-2">Meta-Llama-3.2-1B-Instruct</h4>
+                  <p className="text-muted-foreground">
+                    We included this smaller, efficient model as part of our evaluation framework and fallback strategy.
+                  </p>
+                </div>
               </div>
+              
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>How we set it up:</strong> We opened a new terminal and ran the command below to launch our third server.
+                </AlertDescription>
+              </Alert>
+
+              <CodeBlock language="bash" title="Command to Start Our Llama 3.2 Server">
+                {llama32Command}
+              </CodeBlock>
             </TabsContent>
           </Tabs>
         </CardContent>
@@ -242,7 +254,7 @@ print(response.choices[0].message.content)`;
               <h4 className="font-semibold text-foreground">Our Network Settings</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><code className="text-accent">--host 0.0.0.0</code> We used this to accept connections from any IP.</li>
-                <li><code className="text-accent">--port 3000/4000</code> These were the ports for each of our models.</li>
+                <li><code className="text-accent">--port 3000/4000/5000</code> These were the ports for each of our models.</li>
                 <li><code className="text-accent">--disable-log-requests</code> We used this to reduce log verbosity.</li>
               </ul>
             </div>
