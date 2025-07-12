@@ -112,7 +112,7 @@ vLLM server=your_vLLM server
 
 # API Configuration
 API_HOST=localhost
-API_PORT=8000
+API_PORT=5000
 DEBUG=true
 
 # Google APIs
@@ -131,12 +131,12 @@ ENABLE_AI_REASONING=true
    python -m app.main
    
    # Method 2: Using uvicorn directly
-   uvicorn app.main:app --host localhost --port 8000 --reload
+   uvicorn app.main:app --host localhost --port 5000 --reload
    ```
 
-The API will be available at: `http://localhost:8000`
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
+The API will be available at: `http://localhost:5000`
+- Swagger UI: `http://localhost:5000/docs`
+- ReDoc: `http://localhost:5000/redoc`
 
 ---
 
@@ -190,7 +190,7 @@ The API will be available at: `http://localhost:8000`
 
 ### **Base URL**
 ```
-http://localhost:8000
+http://localhost:5000
 ```
 
 ### **Endpoints Overview**
@@ -260,7 +260,7 @@ http://localhost:8000
 
 ### **Health Check**
 ```bash
-curl http://localhost:8000/health | python -m json.tool
+curl http://localhost:5000/health | python -m json.tool
 ```
 
 **Expected Response:**
@@ -284,7 +284,7 @@ curl http://localhost:8000/health | python -m json.tool
 
 ### **Schedule Meeting Test**
 ```bash
-curl -X POST http://localhost:8000/meetings/schedule \
+curl -X POST http://localhost:5000/meetings/schedule \
   -H "Content-Type: application/json" \
   -d '{
     "title": "Test Meeting",
@@ -306,7 +306,7 @@ curl -X POST http://localhost:8000/meetings/schedule \
 
 ### **Agent Tools Test**
 ```bash
-curl http://localhost:8000/meetings/agent-tools | python -m json.tool
+curl http://localhost:5000/meetings/agent-tools | python -m json.tool
 ```
 
 **Expected Response:**
@@ -345,12 +345,12 @@ curl http://localhost:8000/meetings/agent-tools | python -m json.tool
 
 ### **Calendar Availability Test**
 ```bash
-curl "http://localhost:8000/calendar/availability?participant_emails=test@example.com&days_ahead=7&duration_minutes=30"
+curl "http://localhost:5000/calendar/availability?participant_emails=test@example.com&days_ahead=7&duration_minutes=30"
 ```
 
 ### **Upcoming Meetings Test**
 ```bash
-curl http://localhost:8000/calendar/upcoming?days_ahead=7 | python -m json.tool
+curl http://localhost:5000/calendar/upcoming?days_ahead=7 | python -m json.tool
 ```
 
 ---
@@ -474,7 +474,7 @@ logger.critical("Critical error requiring immediate attention")
 DEBUG=false
 LOG_LEVEL=WARNING
 API_HOST=0.0.0.0
-API_PORT=8000
+API_PORT=5000
 ENABLE_EMAIL_SENDING=true
 ENABLE_CALENDAR_CREATION=true
 ```
@@ -895,7 +895,7 @@ GOOGLE_TOKEN_FILE=token.pickle          # Generated OAuth token
 
 # Optional Configuration
 API_HOST=localhost                       # Server host
-API_PORT=8000                           # Server port
+API_PORT=5000                           # Server port
 DEBUG=true                              # Debug mode
 LOG_LEVEL=INFO                          # Logging level
 

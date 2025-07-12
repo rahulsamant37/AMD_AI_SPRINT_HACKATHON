@@ -622,7 +622,7 @@ curl http://localhost:5000/openapi.json | python -m json.tool
 ## 🔧 **Troubleshooting Common Issues**
 
 ### **Startup Issues**
-- **Port in use**: `lsof -ti:8000 | xargs kill -9`
+- **Port in use**: `lsof -ti:5000 | xargs kill -9`
 - **Missing credentials**: Check `.env` and `credentials.json`
 - **OAuth errors**: Re-run Google authentication flow
 

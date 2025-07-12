@@ -229,7 +229,7 @@ The API returns a comprehensive response that includes:
 import requests
 import json
 
-url = "http://localhost:8000/api/meetings/schedule"
+url = "http://localhost:5000/api/meetings/schedule"
 data = {
     "Request_id": "unique-request-id",
     "Datetime": "13-07-2025T14:30:00",
