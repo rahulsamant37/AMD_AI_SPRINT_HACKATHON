@@ -88,5 +88,6 @@
     "EmailContent": "Hi team, let's meet on Thursday for 30 minutes to discuss the status of Agentic AI Project.",
     "EventStart": "2025-07-17T10:30:00+05:30",
     "EventEnd": "2025-07-17T11:00:00+05:30",
-    "Duration_mins": "30"
+    "Duration_mins": "30",
+    "metadata": {}
 }
