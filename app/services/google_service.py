@@ -7,6 +7,7 @@ Supports multiple authenticated users through AuthenticationManager.
 
 import pickle
 import os
+import json
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 import email.mime.text as mime_text
@@ -17,7 +18,7 @@ from email.mime.text import MIMEText
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
-from google.auth.credentials import Credentials
+from google.oauth2.credentials import Credentials
 from googleapiclient.errors import HttpError
 from fastapi import HTTPException
 
@@ -25,7 +26,7 @@ from app.models import CalendarEvent, EmailMessage, TimeSlot, AvailabilityRespon
 from app.config import config
 from app.core.logging import get_logger
 from app.core.exceptions import GoogleServiceException, CalendarException, EmailException
-from app.services.auth_manager import get_auth_manager
+# from app.services.auth_manager import get_auth_manager  # COMMENTED OUT - using direct token loading
 
 logger = get_logger(__name__)
 
@@ -39,11 +40,15 @@ class GoogleService:
         self.calendar_service = None
         self.gmail_service = None
         
-        # Multi-user authentication manager
-        self.auth_manager = get_auth_manager()
+        # Direct token loading from Keys directory (bypassing auth manager)
+        self.user_credentials = {}
+        self._load_tokens_directly()
+        
+        # Comment out complex authentication manager
+        # self.auth_manager = get_auth_manager()
         
         # Try to initialize with legacy method for backwards compatibility
-        self._legacy_authenticate()
+        # self._legacy_authenticate()
     
     def _legacy_authenticate(self):
         """Legacy authentication method for backwards compatibility"""
@@ -117,14 +122,84 @@ class GoogleService:
         else:
             logger.info("No legacy credentials available - using multi-user system only")
     
+    def _load_tokens_directly(self):
+        """Load tokens directly from Keys directory, bypassing authentication manager"""
+        logger.info("Loading tokens directly from Keys directory...")
+        
+        keys_dir = config.KEYS_DIRECTORY
+        if not os.path.exists(keys_dir):
+            logger.warning(f"Keys directory not found: {keys_dir}")
+            return
+        
+        loaded_count = 0
+        for filename in os.listdir(keys_dir):
+            if filename.endswith('.amd.token'):
+                token_file_path = os.path.join(keys_dir, filename)
+                logger.info(f"Loading token file: {token_file_path}")
+                
+                try:
+                    # Load the token file (JSON format)
+                    with open(token_file_path, 'r') as f:
+                        token_data = json.load(f)
+                    
+                    # Create credentials object from token data
+                    credentials = Credentials(
+                        token=token_data.get('token'),
+                        refresh_token=token_data.get('refresh_token'),
+                        token_uri=token_data.get('token_uri'),
+                        client_id=token_data.get('client_id'),
+                        client_secret=token_data.get('client_secret'),
+                        scopes=token_data.get('scopes', [])
+                    )
+                    
+                    # Refresh token if expired
+                    if not credentials.valid:
+                        if credentials.expired and credentials.refresh_token:
+                            logger.info(f"Refreshing expired token for {filename}")
+                            try:
+                                credentials.refresh(Request())
+                                logger.info(f"Token refreshed successfully for {filename}")
+                            except Exception as refresh_error:
+                                logger.error(f"Failed to refresh token for {filename}: {refresh_error}")
+                                continue
+                        else:
+                            logger.warning(f"Invalid credentials in {filename}")
+                            continue
+                    
+                    # Get user email from credentials
+                    try:
+                        service = build('oauth2', 'v2', credentials=credentials)
+                        user_info = service.userinfo().get().execute()
+                        email = user_info.get('email')
+                        if email:
+                            self.user_credentials[email] = credentials
+                            loaded_count += 1
+                            logger.info(f"✓ Loaded credentials for: {email}")
+                        else:
+                            logger.error(f"Could not get email from {filename}")
+                    except Exception as email_error:
+                        logger.error(f"Failed to get email from {filename}: {email_error}")
+                        continue
+                        
+                except Exception as e:
+                    logger.error(f"Failed to process token file {filename}: {e}")
+        
+        logger.info(f"Loaded {loaded_count} tokens directly from Keys directory")
+        if loaded_count > 0:
+            logger.info(f"Available authenticated users: {list(self.user_credentials.keys())}")
+
     def get_user_service(self, email: str, service_type: str = 'calendar'):
-        """Get Google API service for a specific authenticated user"""
+        """Get Google API service for specific user (direct credential access)"""
+        if email not in self.user_credentials:
+            logger.error(f"No credentials found for user: {email}")
+            return None
+        
+        if not self.is_user_authenticated(email):
+            logger.error(f"User not authenticated: {email}")
+            return None
+        
         try:
-            credentials = self.auth_manager.get_user_credentials(email)
-            if not credentials:
-                logger.error(f"No valid credentials found for user: {email}")
-                return None
-            
+            credentials = self.user_credentials[email]
             if service_type == 'calendar':
                 return build('calendar', 'v3', credentials=credentials)
             elif service_type == 'gmail':
@@ -133,24 +208,46 @@ class GoogleService:
                 logger.error(f"Unknown service type: {service_type}")
                 return None
         except Exception as e:
-            logger.error(f"Failed to build {service_type} service for {email}: {e}")
+            logger.error(f"Failed to create {service_type} service for {email}: {e}")
             return None
     
     def is_user_authenticated(self, email: str) -> bool:
-        """Check if a user is authenticated"""
-        return self.auth_manager.is_user_authenticated(email)
+        """Check if user is authenticated (direct credential check)"""
+        if email not in self.user_credentials:
+            return False
+        
+        creds = self.user_credentials[email]
+        if not creds.valid:
+            if creds.expired and creds.refresh_token:
+                try:
+                    creds.refresh(Request())
+                    return creds.valid
+                except Exception as e:
+                    logger.error(f"Failed to refresh credentials for {email}: {e}")
+                    return False
+            return False
+        return True
     
     def get_authenticated_users(self) -> List[str]:
-        """Get list of all authenticated users"""
-        return self.auth_manager.get_authenticated_users()
+        """Get list of authenticated user emails (direct from loaded tokens)"""
+        return list(self.user_credentials.keys())
+    
+    def get_authenticated_email(self) -> Optional[str]:
+        """Get the first authenticated user email (for legacy compatibility)"""
+        users = self.get_authenticated_users()
+        return users[0] if users else None
     
     def authenticate_new_user(self) -> Optional[str]:
-        """Authenticate a new user"""
-        return self.auth_manager.authenticate_new_user()
+        """Authenticate a new user - COMMENTED OUT FOR DIRECT TOKEN LOADING"""
+        # return self.auth_manager.authenticate_new_user()
+        logger.warning("authenticate_new_user disabled - using direct token loading")
+        return None
     
     def remove_user_authentication(self, email: str) -> bool:
-        """Remove user authentication"""
-        return self.auth_manager.remove_user_authentication(email)
+        """Remove user authentication - COMMENTED OUT FOR DIRECT TOKEN LOADING"""
+        # return self.auth_manager.remove_user_authentication(email)
+        logger.warning("remove_user_authentication disabled - using direct token loading")
+        return False
     
     # Calendar Methods
     def get_calendar_availability(self, participant_emails: List[str], 
@@ -651,4 +748,57 @@ class GoogleService:
             'legacy_calendar': legacy_calendar,
             'legacy_gmail': legacy_gmail,
             'authenticated_users_count': len(authenticated_users)
-        } 
+        }
+    
+    def get_direct_calendar_service(self, user_email: str):
+        """
+        BYPASS AUTH: Load token directly from Keys directory without authentication checks
+        """
+        import json
+        from google.oauth2.credentials import Credentials
+        
+        try:
+            # Map email to token file
+            email_to_file = {
+                "userone.amd@gmail.com": "userone.amd.token",
+                "usertwo.amd@gmail.com": "usertwo.amd.token", 
+                "userthree.amd@gmail.com": "userthree.amd.token"
+            }
+            
+            token_filename = email_to_file.get(user_email)
+            if not token_filename:
+                logger.error(f"No token file mapping for {user_email}")
+                return None
+                
+            token_file_path = os.path.join(config.KEYS_DIRECTORY, token_filename)
+            if not os.path.exists(token_file_path):
+                logger.error(f"Token file not found: {token_file_path}")
+                return None
+            
+            # Load token data
+            with open(token_file_path, 'r') as f:
+                token_data = json.load(f)
+            
+            # Create credentials
+            credentials = Credentials(
+                token=token_data.get('token'),
+                refresh_token=token_data.get('refresh_token'),
+                token_uri=token_data.get('token_uri'),
+                client_id=token_data.get('client_id'),
+                client_secret=token_data.get('client_secret'),
+                scopes=token_data.get('scopes', [])
+            )
+            
+            # Try to refresh if expired
+            if credentials.expired and credentials.refresh_token:
+                logger.info(f"Refreshing expired token for {user_email}")
+                credentials.refresh(Request())
+            
+            # Build calendar service
+            calendar_service = build('calendar', 'v3', credentials=credentials)
+            logger.info(f"BYPASS AUTH: Direct calendar service created for {user_email}")
+            return calendar_service
+            
+        except Exception as e:
+            logger.error(f"BYPASS AUTH: Failed to create direct calendar service for {user_email}: {e}")
+            return None

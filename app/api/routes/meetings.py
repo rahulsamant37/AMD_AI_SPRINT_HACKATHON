@@ -34,8 +34,10 @@ def convert_new_to_legacy_format(request: ScheduleMeetingRequest) -> LegacySched
     # Convert attendees to participants format
     participants = []
     for attendee in request.Attendees:
-        if attendee.email != request.From:  # Don't include organizer in participants
-            participants.append({"email": attendee.email, "name": attendee.email.split('@')[0]})
+        # Handle both dict and object formats
+        email = attendee.get('email') if isinstance(attendee, dict) else getattr(attendee, 'email', None)
+        if email and email != request.From:  # Don't include organizer in participants
+            participants.append({"email": email, "name": email.split('@')[0]})
     
     # Create organizer object
     organizer = {
@@ -563,6 +565,76 @@ async def get_agent_tools(agent = Depends(get_agent_service)):
     }
 
 
+@router.post("/receive", response_model=MeetingOutputEvent)
+async def receive_meeting_request(
+    request: ScheduleMeetingRequest,
+    agent_service=Depends(get_agent_service)
+) -> MeetingOutputEvent:
+    """
+    New endpoint that processes meeting requests and returns complete MeetingOutputEvent
+    with MetaData according to JSON_Samples/3_Output_Event.json format
+    """
+    try:
+        logger.info(f"Received meeting request for: {request.EmailContent}")
+        
+        # Convert to legacy format for processing
+        legacy_request = convert_new_to_legacy_format(request)
+        
+        # Process the meeting request
+        result = await agent_service.schedule_meeting(legacy_request)
+        
+        # Convert request to ProcessedMeetingInput format
+        # Handle Attendees as either dict or AttendeeModel objects
+        attendees_list = []
+        for attendee in request.Attendees:
+            if isinstance(attendee, dict):
+                attendees_list.append(AttendeeModel(email=attendee['email']))
+            else:
+                attendees_list.append(attendee)
+        
+        processed_input = ProcessedMeetingInput(
+            Request_id=request.Request_id,
+            Datetime=request.Datetime,
+            Location=request.Location or "Virtual Meeting",
+            From=request.From,
+            Attendees=attendees_list,
+            Subject=request.Subject,
+            EmailContent=request.EmailContent,
+            Duration_mins=request.Duration_mins or 60
+        )
+        
+        # Extract suggested times from result
+        suggested_start = result.get("suggested_start_time", datetime.now())
+        suggested_end = result.get("suggested_end_time", datetime.now() + timedelta(hours=1))
+        
+        # Create processing metadata
+        processing_metadata = {
+            "processing_time_ms": result.get("processing_time", 150),
+            "model_used": "deepseek-llm-7b-chat",
+            "conflicts_detected": 0,
+            "request_id": request.Request_id
+        }
+        
+        # Create the complete output event with MetaData
+        output_event = create_output_event(
+            processed_input, 
+            suggested_start, 
+            suggested_end,
+            agent_response=result,
+            processing_metadata=processing_metadata
+        )
+        
+        logger.info(f"Successfully processed meeting request. Output event created with MetaData.")
+        return output_event
+        
+    except Exception as e:
+        logger.error(f"Error processing meeting request: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to process meeting request: {str(e)}"
+        )
+
+
 # @router.post("/natural-language-schedule")
 # async def natural_language_schedule(query: str):
     """Future endpoint for natural language meeting scheduling"""
@@ -572,4 +644,4 @@ async def get_agent_tools(agent = Depends(get_agent_service)):
         "message": "Natural language processing not yet implemented",
         "query": query,
         "status": "coming_soon"
-    } 
+    }
