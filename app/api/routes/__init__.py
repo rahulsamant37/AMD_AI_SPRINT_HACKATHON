@@ -8,6 +8,7 @@ from fastapi import APIRouter
 from .meetings import router as meetings_router
 from .health import router as health_router
 from .calendar import router as calendar_router
+from .receive import router as receive_router
 
 
 def create_api_router() -> APIRouter:
@@ -21,6 +22,7 @@ def create_api_router() -> APIRouter:
     
     # Include route modules
     api_router.include_router(health_router, tags=["Health"])
+    api_router.include_router(receive_router, tags=["Receive"])  # Direct /receive endpoint
     api_router.include_router(meetings_router, prefix="/meetings", tags=["Meetings"])
     api_router.include_router(calendar_router, prefix="/calendar", tags=["Calendar"])
     

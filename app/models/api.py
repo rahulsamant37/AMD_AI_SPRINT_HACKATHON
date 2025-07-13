@@ -16,14 +16,19 @@ class AttendeeModel(BaseModel):
 
 
 class ScheduleMeetingRequest(BaseModel):
-    """API request model for scheduling meetings - exactly matches 1_Input_Request.json format"""
+    """API request model for scheduling meetings - supports both input and processed formats"""
     Request_id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()), description="Unique request identifier")
     Datetime: str = Field(..., description="Request datetime in format 'DD-MM-YYYYTHH:MM:SS'")
     Location: Optional[str] = Field(None, description="Meeting location")
     From: str = Field(..., description="Organizer email address")
     Attendees: List[AttendeeModel] = Field(..., description="List of meeting attendees")
-    Subject: str = Field(..., min_length=1, max_length=200, description="Meeting subject/title")
+    Subject: Optional[str] = Field(None, min_length=1, max_length=200, description="Meeting subject/title")
     EmailContent: str = Field(..., description="Meeting description or email content")
+    
+    # Fields that can appear in processed input format (2_Processed_Input.json)
+    Start: Optional[str] = Field(None, description="Processed start date range (from 2_Processed_Input.json)")
+    End: Optional[str] = Field(None, description="Processed end date range (from 2_Processed_Input.json)")
+    Duration_mins: Optional[str] = Field(None, description="Extracted duration in minutes as string (from 2_Processed_Input.json)")
     
     # Optional legacy fields for backward compatibility
     title: Optional[str] = Field(None, description="Legacy: Meeting title (will map to Subject)")
@@ -117,7 +122,7 @@ class MeetingOutputEvent(BaseModel):
     EventStart: str = Field(..., description="Final scheduled event start time in ISO format with timezone (YYYY-MM-DDTHH:MM:SS+05:30)")
     EventEnd: str = Field(..., description="Final scheduled event end time in ISO format with timezone (YYYY-MM-DDTHH:MM:SS+05:30)")
     Duration_mins: str = Field(..., description="Event duration in minutes as string")
-    MetaData: Dict[str, Any] = Field(default_factory=dict, description="Metadata containing communication details, agent processing info, or other contextual data")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Metadata containing communication details, agent processing info, or other contextual data")
     
     @validator('EventStart', 'EventEnd')
     def validate_event_datetime_format(cls, v):
