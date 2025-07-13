@@ -289,7 +289,7 @@ The API returns a comprehensive response that includes:
 
 To start the FastAPI server:
 ```bash
-python -m app.main
+uvicorn app.main:app --host 0.0.0.0 --port 5000
 ```
 
 The server will be available at:
