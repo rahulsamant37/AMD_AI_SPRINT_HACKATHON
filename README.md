@@ -464,6 +464,9 @@ Your Final Output JSON should follow below structure.  <br>
 }
 ```
 ---------
+### Sequential Workflow :
+![Sequence Diagram](https://github.com/rahulsamant37/AMD_AI_SPRINT_HACKATHON/raw/main/docs/squence_diagram.png)
+---------
 ### Submission :
 
 #### Please follow : [Submission Notebook](https://github.com/AMD-AI-HACKATHON/AI-Scheduling-Assistant/blob/main/Submission.ipynb)
